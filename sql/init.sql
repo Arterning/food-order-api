@@ -1,5 +1,5 @@
--- Initial admin user (password: ComplexPassword123!)
-INSERT INTO "user" (id, username, password_hash) VALUES (1, 'admin', 'scrypt:32768:8:1$sV5uYg8fJq7hL6wN$1f9a0a5f8a8d8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e');
+-- Initial admin user (password: goodlife123)
+INSERT INTO "user" (id, username, password_hash) VALUES (1, 'admin', 'scrypt:32768:8:1$Hdo9fJPIyJFSLDJN$ec5b3984b0083bbc475f47f7864fa17f7d11d9a8e1ae32c53d1a5093668dc9086e1cd048591981b83869f66b0aedb11626865de4ee8f0f2e3c0ac263f098712c');
 
 -- Initial recipe data
 INSERT INTO recipe (id, name, category, image, ingredients) VALUES
