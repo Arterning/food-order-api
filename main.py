@@ -277,16 +277,18 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all() # Create database tables if they don't exist
 
-        # Check if the recipe table is empty
-        if Recipe.query.count() == 0:
+        # Check if both tables are empty before seeding
+        if Recipe.query.count() == 0 and User.query.count() == 0:
             print("Database is empty. Seeding initial data...")
             try:
                 # Get the absolute path to the SQL file
                 sql_file_path = os.path.join(basedir, 'sql', 'init.sql')
                 with open(sql_file_path, 'r', encoding='utf-8') as f:
-                    # Execute the SQL script
+                    # Execute the SQL script line by line
                     from sqlalchemy import text
-                    db.session.execute(text(f.read()))
+                    for statement in f.read().split(';'):
+                        if statement.strip():
+                            db.session.execute(text(statement))
                     db.session.commit()
                 print("Data seeding successful.")
             except Exception as e:

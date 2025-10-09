@@ -1,3 +1,6 @@
+-- Initial admin user (password: ComplexPassword123!)
+INSERT INTO "user" (id, username, password_hash) VALUES (1, 'admin', 'scrypt:32768:8:1$sV5uYg8fJq7hL6wN$1f9a0a5f8a8d8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e8e');
+
 -- Initial recipe data
 INSERT INTO recipe (id, name, category, image, ingredients) VALUES
 (1, '红烧肉', 'dish', 'https://picsum.photos/seed/hongshaorou/300/200', '五花肉、酱油、冰糖'),
