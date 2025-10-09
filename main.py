@@ -4,6 +4,15 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import uuid
+import os
+from dotenv import load_dotenv
+from werkzeug.security import generate_password_hash, check_password_hash
+import jwt
+from datetime import datetime, timedelta, timezone
+from functools import wraps
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Get the absolute path of the directory where the script is located
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -14,6 +23,7 @@ CORS(app)
 # --- App Configuration ---
 UPLOAD_FOLDER = os.path.join(basedir, 'uploads')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'a_default_secret_key') # Added secret key
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'app.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -28,9 +38,21 @@ def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
-
 # --- Database Models ---
+
+class User(db.Model):
+    """User Model"""
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(256), nullable=False)
+
+    def set_password(self, password):
+        self.password_hash = generate_password_hash(password)
+
+    def check_password(self, password):
+        return check_password_hash(self.password_hash, password)
+
+
 
 class Recipe(db.Model):
     """Recipe Model"""
@@ -76,15 +98,88 @@ class OrderItem(db.Model):
             'recipe_name': self.recipe.name if self.recipe else 'N/A'
         }
 
+# --- Authentication ---
+
+def token_required(f):
+    """Decorator to protect routes with JWT authentication"""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            try:
+                # Expected format: "Bearer <token>"
+                token_type, token = auth_header.split()
+                if token_type.lower() != 'bearer':
+                    return jsonify({'message': 'Invalid token type'}), 401
+            except ValueError:
+                return jsonify({'message': 'Invalid authorization header format'}), 401
+
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = User.query.get(data['user_id'])
+        except jwt.ExpiredSignatureError:
+            return jsonify({'message': 'Token has expired!'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'message': 'Token is invalid!'}), 401
+        
+        if current_user is None:
+            return jsonify({'message': 'User not found!'}), 401
+
+        # Pass the user object to the decorated function
+        return f(current_user, *args, **kwargs)
+
+    return decorated
 
 # --- API Routes ---
+
+@app.route('/api/register', methods=['POST'])
+def register():
+    """Register a new user"""
+    data = request.get_json()
+    if not data or not data.get('username') or not data.get('password'):
+        return jsonify({'error': 'Username and password are required'}), 400
+
+    if User.query.filter_by(username=data['username']).first():
+        return jsonify({'error': 'Username already exists'}), 409
+
+    new_user = User(username=data['username'])
+    new_user.set_password(data['password'])
+    db.session.add(new_user)
+    db.session.commit()
+
+    return jsonify({'message': 'New user created successfully'}), 201
+
+@app.route('/api/login', methods=['POST'])
+def login():
+    """Login route to get the API token"""
+    data = request.get_json()
+    if not data or not data.get('username') or not data.get('password'):
+        return jsonify({'error': 'Username and password are required'}), 400
+
+    user = User.query.filter_by(username=data['username']).first()
+
+    if not user or not user.check_password(data['password']):
+        return jsonify({'error': 'Invalid credentials'}), 401
+
+    token = jwt.encode({
+        'user_id': user.id,
+        'exp': datetime.now(timezone.utc) + timedelta(hours=24) # Token expires in 24 hours
+    }, app.config['SECRET_KEY'], algorithm="HS256")
+
+    return jsonify({'token': token})
+
 
 @app.route('/')
 def index():
     return jsonify({'message': 'Welcome to the Food Order API!'})
 
 @app.route('/api/recipes', methods=['POST'])
-def create_recipe():
+@token_required
+def create_recipe(current_user):
     """Create a new recipe"""
     data = request.get_json()
     if not data or not all(k in data for k in ['name', 'category', 'ingredients']):
@@ -101,13 +196,15 @@ def create_recipe():
     return jsonify(new_recipe.to_dict()), 201
 
 @app.route('/api/recipes', methods=['GET'])
-def get_recipes():
+@token_required
+def get_recipes(current_user):
     """Get all recipes"""
     recipes = Recipe.query.all()
     return jsonify([recipe.to_dict() for recipe in recipes])
 
 @app.route('/api/orders', methods=['POST'])
-def create_order():
+@token_required
+def create_order(current_user):
     """Create a new order"""
     data = request.get_json()
     # Expected data format: {'recipe_ids': [1, 2, 3]}
@@ -130,13 +227,15 @@ def create_order():
     return jsonify(new_order.to_dict()), 201
 
 @app.route('/api/orders', methods=['GET'])
-def get_orders():
+@token_required
+def get_orders(current_user):
     """Get all orders"""
     orders = Order.query.order_by(Order.id.desc()).all()
     return jsonify([order.to_dict() for order in orders])
 
 @app.route('/api/orders/<int:order_id>/complete', methods=['PUT'])
-def complete_order(order_id):
+@token_required
+def complete_order(current_user, order_id):
     """Mark an order as completed"""
     order = Order.query.get_or_404(order_id)
     order.status = 'completed'
@@ -144,7 +243,8 @@ def complete_order(order_id):
     return jsonify(order.to_dict())
 
 @app.route('/api/upload', methods=['POST'])
-def upload_file():
+@token_required
+def upload_file(current_user):
     """Upload a file and return its URL"""
     if 'file' not in request.files:
         return jsonify({'error': 'No file part'}), 400
