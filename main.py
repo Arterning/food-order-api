@@ -262,10 +262,12 @@ def complete_order(current_user, order_id):
     db.session.commit()
     return jsonify(order.to_dict())
 
-@app.route('/api/users/me', methods=['PUT'])
+@app.route('/api/users/me', methods=['PUT', 'GET'])
 @token_required
 def update_user(current_user):
     """Update current user's information"""
+    if request.method == 'GET':
+        return jsonify(current_user.to_dict()), 200
     data = request.get_json()
     if not data:
         return jsonify({'error': 'No data provided'}), 400
