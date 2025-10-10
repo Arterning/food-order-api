@@ -78,6 +78,8 @@ class Order(db.Model):
     items = db.relationship('OrderItem', backref='order', lazy=True, cascade="all, delete-orphan")
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     username = db.Column(db.String(80), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
         return {
@@ -85,7 +87,9 @@ class Order(db.Model):
             'status': self.status,
             'items': [item.to_dict() for item in self.items],
             'user_id': self.user_id,
-            'username': self.username
+            'username': self.username,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat()
         }
 
 class OrderItem(db.Model):
