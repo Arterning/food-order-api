@@ -76,12 +76,16 @@ class Order(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     status = db.Column(db.String(20), nullable=False, default='pending') # e.g., pending, completed
     items = db.relationship('OrderItem', backref='order', lazy=True, cascade="all, delete-orphan")
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    username = db.Column(db.String(80), nullable=False)
 
     def to_dict(self):
         return {
             'id': self.id,
             'status': self.status,
-            'items': [item.to_dict() for item in self.items]
+            'items': [item.to_dict() for item in self.items],
+            'user_id': self.user_id,
+            'username': self.username
         }
 
 class OrderItem(db.Model):
@@ -211,7 +215,11 @@ def create_order(current_user):
     if not data or 'recipe_ids' not in data or not isinstance(data['recipe_ids'], list):
         return jsonify({'error': 'Invalid data. Expected a list of recipe_ids.'}), 400
 
-    new_order = Order(status='pending')
+    new_order = Order(
+        status='pending',
+        user_id=current_user.id,
+        username=current_user.username
+    )
     
     for recipe_id in data['recipe_ids']:
         recipe = Recipe.query.get(recipe_id)
