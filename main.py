@@ -171,7 +171,7 @@ def register():
 
 @app.route('/api/login', methods=['POST'])
 def login():
-    """Login route to get the API token"""
+    """Login route to get the API token and user information"""
     data = request.get_json()
     if not data or not data.get('username') or not data.get('password'):
         return jsonify({'error': 'Username and password are required'}), 400
@@ -186,7 +186,11 @@ def login():
         'exp': datetime.now(timezone.utc) + timedelta(hours=24) # Token expires in 24 hours
     }, app.config['SECRET_KEY'], algorithm="HS256")
 
-    return jsonify({'token': token})
+    # Return both token and user information
+    return jsonify({
+        'token': token,
+        'user': user.to_dict()
+    })
 
 
 @app.route('/')
