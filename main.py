@@ -262,6 +262,46 @@ def complete_order(current_user, order_id):
     db.session.commit()
     return jsonify(order.to_dict())
 
+@app.route('/api/users/me', methods=['PUT'])
+@token_required
+def update_user(current_user):
+    """Update current user's information"""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    # Update username if provided
+    if 'username' in data:
+        new_username = data['username'].strip()
+        if not new_username:
+            return jsonify({'error': 'Username cannot be empty'}), 400
+        
+        # Check if username is already taken by another user
+        existing_user = User.query.filter_by(username=new_username).first()
+        if existing_user and existing_user.id != current_user.id:
+            return jsonify({'error': 'Username already exists'}), 409
+        
+        current_user.username = new_username
+    
+    # Update password if provided
+    if 'password' in data:
+        new_password = data['password']
+        if not new_password or len(new_password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters long'}), 400
+        
+        current_user.set_password(new_password)
+    
+    # Update avatar URL if provided
+    if 'avatar_url' in data:
+        current_user.avatar_url = data['avatar_url']
+    
+    try:
+        db.session.commit()
+        return jsonify(current_user.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to update user information'}), 500
+
 @app.route('/api/upload', methods=['POST'])
 @token_required
 def upload_file(current_user):
