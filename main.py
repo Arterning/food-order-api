@@ -246,6 +246,34 @@ def delete_recipe(current_user, recipe_id):
     
     return jsonify({'message': 'Recipe deleted successfully'}), 200
 
+@app.route('/api/recipes/<int:recipe_id>', methods=['PUT'])
+@token_required
+def update_recipe(current_user, recipe_id):
+    """Update an existing recipe"""
+    # Find the recipe by ID
+    recipe = Recipe.query.get_or_404(recipe_id)
+    
+    # Get the JSON data from the request
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    # Update the recipe fields if provided in the request
+    if 'name' in data:
+        recipe.name = data['name']
+    if 'category' in data:
+        recipe.category = data['category']
+    if 'ingredients' in data:
+        recipe.ingredients = data['ingredients']
+    if 'image' in data:
+        recipe.image = data['image']
+    
+    # Commit the changes to the database
+    db.session.commit()
+    
+    # Return the updated recipe
+    return jsonify(recipe.to_dict()), 200
+
 @app.route('/api/recipes', methods=['POST'])
 @token_required
 def create_recipe(current_user):
