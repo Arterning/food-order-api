@@ -246,12 +246,16 @@ def delete_recipe(current_user, recipe_id):
     
     return jsonify({'message': 'Recipe deleted successfully'}), 200
 
-@app.route('/api/recipes/<int:recipe_id>', methods=['PUT'])
+@app.route('/api/recipes/<int:recipe_id>', methods=['PUT', 'GET'])
 @token_required
 def update_recipe(current_user, recipe_id):
-    """Update an existing recipe"""
+    """Get a recipe by ID"""
     # Find the recipe by ID
     recipe = Recipe.query.get_or_404(recipe_id)
+    if request.method == 'GET':
+        return jsonify(recipe.to_dict()), 200
+        
+    """Update an existing recipe"""
     
     # Get the JSON data from the request
     data = request.get_json()
