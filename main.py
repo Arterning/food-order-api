@@ -215,6 +215,37 @@ def login():
 def index():
     return jsonify({'message': 'Welcome to the Food Order API!'})
 
+@app.route('/api/recipes/<int:recipe_id>', methods=['DELETE'])
+@token_required
+def delete_recipe(current_user, recipe_id):
+    """Delete a recipe and its associated image file"""
+    # Find the recipe by ID
+    recipe = Recipe.query.get_or_404(recipe_id)
+    
+    # Check if there's an associated image file to delete
+    if recipe.image:
+        try:
+            # Extract the filename from the URL
+            # The URL format is typically http(s)://host/uploads/filename
+            import re
+            filename_match = re.search(r'/uploads/(.+)$', recipe.image)
+            if filename_match:
+                filename = filename_match.group(1)
+                file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                
+                # Delete the file if it exists
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+        except Exception as e:
+            # Log the error but continue with recipe deletion
+            print(f"Error deleting image file: {e}")
+    
+    # Delete the recipe from the database
+    db.session.delete(recipe)
+    db.session.commit()
+    
+    return jsonify({'message': 'Recipe deleted successfully'}), 200
+
 @app.route('/api/recipes', methods=['POST'])
 @token_required
 def create_recipe(current_user):
