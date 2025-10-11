@@ -325,8 +325,14 @@ def upload_file(current_user):
         # Save the file
         file.save(os.path.join(app.config['UPLOAD_FOLDER'], unique_filename))
         
-        # Construct the URL
-        file_url = request.host_url.rstrip('/') + '/uploads/' + unique_filename
+        # 确定使用的协议（HTTP或HTTPS）
+        # 首先检查X-Forwarded-Proto头，这是代理服务器传递的原始协议
+        protocol = request.headers.get('X-Forwarded-Proto', 'http')
+        
+        # 构建URL时使用正确的协议
+        host_with_protocol = protocol + '://' + request.host
+        file_url = host_with_protocol + '/uploads/' + unique_filename
+        
         return jsonify({'url': file_url})
     else:
         return jsonify({'error': 'File type not allowed'}), 400
