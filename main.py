@@ -90,6 +90,23 @@ class Order(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     def to_dict(self):
+        # 收集所有订单中菜品的配料并去重
+        all_ingredients = set()
+        
+        for item in self.items:
+            if item.recipe and item.recipe.ingredients:
+                # 分割配料（支持空格或逗号分隔）
+                ingredients = []
+                if ',' in item.recipe.ingredients:
+                    ingredients = [ing.strip() for ing in item.recipe.ingredients.split(',')]
+                else:
+                    ingredients = item.recipe.ingredients.split()
+                
+                # 添加到集合中自动去重
+                for ingredient in ingredients:
+                    if ingredient:  # 忽略空字符串
+                        all_ingredients.add(ingredient)
+        
         return {
             'id': self.id,
             'status': self.status,
@@ -97,7 +114,8 @@ class Order(db.Model):
             'user_id': self.user_id,
             'username': self.username,
             'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat()
+            'updated_at': self.updated_at.isoformat(),
+            'all_ingredients': list(all_ingredients)  # 转换为列表返回
         }
 
 class OrderItem(db.Model):
