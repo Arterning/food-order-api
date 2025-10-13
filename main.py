@@ -86,8 +86,8 @@ class Order(db.Model):
     items = db.relationship('OrderItem', backref='order', lazy=True, cascade="all, delete-orphan")
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     username = db.Column(db.String(80), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8))))
+    updated_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8))), onupdate=lambda: datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=8))))
 
     def to_dict(self):
         # 收集所有订单中菜品的配料并去重
@@ -201,7 +201,7 @@ def login():
 
     token = jwt.encode({
         'user_id': user.id,
-        'exp': datetime.now(timezone.utc) + timedelta(hours=24) # Token expires in 24 hours
+        'exp': datetime.now(timezone.utc) + timedelta(days=7) # Token expires in 7 days
     }, app.config['SECRET_KEY'], algorithm="HS256")
 
     # Return both token and user information
