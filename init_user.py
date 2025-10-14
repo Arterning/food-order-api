@@ -1,9 +1,10 @@
 import os
 import sys
 from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash
 from dotenv import load_dotenv
+
+# 导入模型和数据库
+from models import db, User
 
 # Load environment variables from .env file
 load_dotenv()
@@ -19,18 +20,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'ap
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
-db = SQLAlchemy(app)
-
-# Define User model (same as in main.py)
-class User(db.Model):
-    """User Model"""
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(256), nullable=False)
-    avatar_url = db.Column(db.String(255), nullable=True)  # URL to the avatar image
-
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+app.app_context().push()
+db.init_app(app)
 
 # Function to create a new user
 def create_user(username, password):
