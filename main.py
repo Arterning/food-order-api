@@ -412,13 +412,13 @@ def upload_file(current_user):
         
         # 构建URL时使用正确的协议
         host_with_protocol = protocol + '://' + request.host
-        file_url = host_with_protocol + '/uploads/' + unique_filename
+        file_url = host_with_protocol + '/api/uploads/' + unique_filename
         
         return jsonify({'url': file_url})
     else:
         return jsonify({'error': 'File type not allowed'}), 400
 
-@app.route('/uploads/<path:filename>')
+@app.route('/api/uploads/<path:filename>')
 def uploaded_file(filename):
     """Serve uploaded files"""
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
