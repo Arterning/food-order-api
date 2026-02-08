@@ -12,3 +12,6 @@ wheels/
 *.db
 
 uploads
+
+
+logs
